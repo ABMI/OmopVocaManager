@@ -1,5 +1,27 @@
+#' @title Upload vocabulary files to DBMS
+#'
+#' @description This is start of OmopVocaManager. It needs DB connection information
+#'
+#' @details
+#' This function for help to upload vocabulary data to DB.
+#' FIrst, it try to connect your dbms and check tables.
+#'
+#' @param dbms DBMS name to connect
+#' @param ip IP to connect
+#' @param schema schema name
+#' @param id Login id for dbms
+#' @param pw Login password for dbms
+#' @param droptable Logical. If TRUE, drop existed tables and create new tables.
+#'
+#'
+#' @export
+#'
 voca_manager <- function(dbms, ip=NULL, schema = NULL,id=NULL, pw=NULL, droptable = FALSE){
-
+    check.packages("SqlRender")
+    check.packages("DatabaseConnector")
+    check.packages("data.table")
+    check.packages("DBI")
+    check.packages("data.table")
     cat("Choose voca folder.")
 
     if(Sys.info()[1] == "Windows"){
@@ -10,8 +32,9 @@ voca_manager <- function(dbms, ip=NULL, schema = NULL,id=NULL, pw=NULL, droptabl
     }
 
     code <- readline("Input voca code name(ex.SNOMED ) : ")
+    voca_id <- readline("Input voca id numver : ")
     update <- readline("Input voca latest update(yyyy-mm-dd) : ")
 
     voca_dir <- voca_check(voca_dir,code,update)
-    voca_upload(dbms, ip, schema, id, pw, droptable, voca_dir)
+    voca_upload(dbms, ip, schema, id, pw, droptable, voca_dir, code, voca_id, update)
 }
