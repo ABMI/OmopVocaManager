@@ -1,7 +1,7 @@
 Package: OmopVocaManager
 Type: Package
-Title: What the Package Does (Title Case)
-Version: 0.1.0
+Title: Athena omop vocabulary export tool.
+Version: 0.8.0
 Author: Itblock
 Maintainer: The package maintainer <wnsuddlsla@gmail.com>
 Description: Upload vocabulary files to DBMS.

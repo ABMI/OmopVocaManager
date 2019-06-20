@@ -32,7 +32,7 @@ voca_manager <- function(dbms, ip=NULL, schema = NULL,id=NULL, pw=NULL, droptabl
     }
 
     code <- readline("Input voca code name(ex.SNOMED ) : ")
-    voca_id <- readline("Input voca id numver : ")
+    voca_id <- readline("Input voca id number : ")
     update <- readline("Input voca latest update(yyyy-mm-dd) : ")
 
     voca_dir <- voca_check(voca_dir,code,update)

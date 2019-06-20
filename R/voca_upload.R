@@ -13,41 +13,61 @@ voca_upload <- function(dbms, ip, schema, id, pw, droptable, voca_path,code, voc
     #Upload csv files
     #To do
 
-
     csv_table <- sapply(voca_names, function(csv_file){fread(file = paste0(voca_path,"\\",csv_file,".csv"), sep = "\t", quote="")})
 
     if(new_table){
-        csv_table$concept$invalid_reason <- NULL
-        for(i in 1:length(voca_names)){
-            print(paste(voca_name[i],"table insert..."))
-            DatabaseConnector::insertTable(connection, voca_names[i], csv_table[[i]], dropTableIfExists = F, progressBar = T, createTable = F)
+        csv_table$concept$invalid_reason <- ""
+        for (i in 1:length(voca_names)) {
+            DatabaseConnector::insertTable(connection, voca_names[i],
+                                           csv_table[[i]], dropTableIfExists = F, progressBar = T,
+                                           createTable = F)
         }
     }else{
-        cat("Duplication check!")
         for(i in 1:length(voca_names)){
-            #임시 테이블 파트 문제
-            DatabaseConnector::insertTable(connection, paste0("##",voca_names[i]), csv_table[[i]], dropTableIfExists = T, progressBar = T, tempTable = T, createTable = T)
-            if(voca_names[i]=="concept"){
-                sql <- "SELECT * FROM tempdb..##concept where concept_id not in (SELECT concept_id FROM concept)"
-            }else{
-                sql <- "SELECT * FROM tempdb..##@tbl_name except (SELECT * from @tbl_name)"
-                sql <- SqlRender::render(sql = sql, tbl_name = voca_names[i])
-            }
-            sql <- SqlRender::translate(sql,targetDialect = dbms)
-            query_result <- DatabaseConnector::querySql(connection,sql)
-            DatabaseConnector::insertTable(connection, voca_names[i], query_result, dropTableIfExists = F, createTable = F)
+            DatabaseConnector::insertTable(connection, paste0("##",
+                                                              voca_names[i]), csv_table[[i]], dropTableIfExists = T,
+                                           progressBar = T, tempTable = T, createTable = T)
+            tryCatch({
+                if (voca_names[i] == "concept") {
+                    sql <- "SELECT * FROM ##concept where concept_id not in(SELECT concept_id FROM concept)"
+                    new_data <- data.table(DatabaseConnector::querySql(connection, sql))
+                    sql <- "DELETE FROM concept where concept_id in
+                    (SELECT A.concept_id FROM concept as A inner join ##concept as B on A.concept_id = B.concept_id where
+                    (A.concept_name != B.concept_name or A.domain_id != B.domain_id or A.vocabulary_id != B.vocabulary_id
+                    or A.concept_class_id != B.concept_class_id or A.concept_code!=B.concept_code));"
+                    DatabaseConnector::executeSql(connection, sql)
+                    ##Encoding Issue
+                    DatabaseConnector::insertTable(connection,
+                                                   voca_names[i], new_data, dropTableIfExists = F,
+                                                   createTable = F)
+                }
+                else {
+                    sql <- "SELECT * FROM ##@tbl_name except (SELECT * from @tbl_name)"
+                    sql <- SqlRender::render(sql = sql, tbl_name = voca_names[i])
+                }
+                sql <- SqlRender::translate(sql, targetDialect = dbms)
+                query_result <- DatabaseConnector::querySql(connection,
+                                                            sql)
+                cat(paste("Export", voca_names[i], "data..."))
+                DatabaseConnector::insertTable(connection, voca_names[i],
+                                               query_result, dropTableIfExists = F, createTable = F,
+                                               progressBar = T)
+            }, error = function(e) {
+                cat(paste("\n",voca_names[i], "table is failed!\n"))
+            })
         }
     }
 
+
     #Create Metadata tuple and insert it after vocabulary files insert in db
-    meta_write <- function(dbms,schema,voca_id,code = code,update = update, who = id){
-        cat("Insert metadata.")
-        sql <- "INSERT INTO @schema_name.metadata values('@voca_id', '@code_name', '@latest_update', '@upload_date', '@uploader');"
-        sql <- SqlRender::render(sql, schema_name = schema, voca_id = voca_id, code_name = code, latest_update = update, upload_date, upload = Sys.Date(), uploader = who)
-        sql <- SqlRender::translate(sql, targetDialect = dbms)
-        DatabaseConnector::executeSql(connection, sql)
-    }
-    meta_write(dbms,schema,voca_id)
+    cat("Insert metadata...")
+    sql <- "INSERT INTO @schema_name.metadata values('@voca_id', '@code_name', '@latest_update', '@upload_date', '@uploader');"
+    sql <- SqlRender::render(sql, schema_name = schema, voca_id = voca_id,
+                             code_name = code, latest_update = update, upload_date = Sys.Date(),
+                             uploader = id)
+    sql <- SqlRender::translate(sql, targetDialect = dbms)
+    DatabaseConnector::executeSql(connection, sql)
     DatabaseConnector::disconnect(connection)
-    stop('Done.')
+    cat("Done.")
 }
+
