@@ -11,14 +11,16 @@ voca_upload <- function(dbms, ip, schema, id, pw, droptable, voca_path,code, voc
     }
 
     #Upload csv files
-    csv_table <- sapply(voca_names, function(csv_file){fread(file = paste0(voca_path,"\\",csv_file,".csv"), sep = "\t", quote="")})
+    csv_table <- sapply(voca_names, function(csv_file){fread(file = paste0(voca_path,"\\",csv_file,".csv"), sep = "\t", quote="",encoding = 'UTF-8')})
     for(i in 1:length(voca_names)){
+        cat(paste("\n",voca_names[i],"table uploading...\n"))
         if(new_table[voca_names[i]]){
             DatabaseConnector::insertTable(connection, voca_names[i],
                                            csv_table[[i]], dropTableIfExists = F, progressBar = T,
                                            createTable = F)
             }else{
-                ddl_sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "create_tables.sql", packageName = "OmopVocaManager", dbms = dbms)
+                ddl_sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "create_tables.sql", packageName = "OmopVocaManager",
+                                                             dbms = dbms)
                 ddl_sql <- SqlRender::splitSql(ddl_sql)
                     # Catch '_date' data type issue
                     if(voca_names[i]=='concept' || voca_names[i]=='concept_relationship' || voca_names[i]=='drug_strength'){
@@ -35,32 +37,45 @@ voca_upload <- function(dbms, ip, schema, id, pw, droptable, voca_path,code, voc
                         }
                     }
                         if (voca_names[i] == "concept") {
-                                DatabaseConnector::insertTable(connection, paste0("##",
-                                                                                  voca_names[i]), csv_table[[i]], dropTableIfExists = T,
-                                                               progressBar = T, createTable = T)
-                                ##Encoding Issue
-                                #temp table ddl
+                            #String 'NA' in csv convert to NA in R.
+                            csv_table[[i]][[2]][is.na(csv_table[[i]]$concept_name)] <- 'NA'
+                            #invalid reason
+                            csv_table[[i]][[10]] <- NA
 
-                                ddl_conv <- function(sql, tbl_name,temp_name){
-                                    sql <- gsub(x = sql, pattern= paste("CREATE TABLE",tbl_name), replacement = paste("CREATE TABLE",temp_name))
-                                    sql <- tolower(sql)
-                                    sql <- SqlRender::translate(sql, targetDialect = dbms)
-                                    DatabaseConnector::executeSql(connection, sql,progressBar = F,reportOverallTime = F)
-                                }
-                                tryCatch({
-                                concept_ddl <- ddl_sql[grep(x = ddl_sql, pattern = paste0("CREATE TABLE ",voca_names[i]," "),ignore.case = T)]
-                                ddl_conv(concept_ddl, voca_names[i], "##insert")
-                                ddl_conv(concept_ddl, voca_names[i], "##delete")
+                            DatabaseConnector::insertTable(connection, paste0("##",
+                                                                              voca_names[i]), csv_table[[i]], dropTableIfExists = T,
+                                                           progressBar = T, createTable = T)
 
-                                temp_sql <-
-                                    "INSERT INTO ##delete SELECT * FROM concept except SELECT * FROM ##concept;
-                                    INSERT INTO ##insert SELECT * FROM ##concept except SELECT * FROM concept;
-                                    delete from concept where concept_id in (select concept_id from ##delete);"
-                                DatabaseConnector::executeSql(connection, temp_sql, progressBar = F, reportOverallTime = F)
-                                insert_sql <- "INSERT INTO concept SELECT * FROM ##insert"
-                                DatabaseConnector::executeSql(connection, insert_sql)
+                            ##Encoding Issue
+                            #temp table ddl
+                            ddl_conv <- function(sql, tbl_name,temp_name){
+                                sql <- gsub(x = sql, pattern= paste("CREATE TABLE",tbl_name), replacement = paste("CREATE TABLE",temp_name))
+                                sql <- tolower(sql)
+                                sql <- SqlRender::translate(sql, targetDialect = dbms)
+                                DatabaseConnector::executeSql(connection, sql,progressBar = F,reportOverallTime = F)
+                            }
+                            tryCatch({
+                            concept_ddl <- ddl_sql[grep(x = ddl_sql, pattern = paste0("CREATE TABLE ",voca_names[i]," "),ignore.case = T)]
+                            ddl_conv(concept_ddl, voca_names[i], "##insert")
+                            ddl_conv(concept_ddl, voca_names[i], "##delete")
+
+                            temp_sql <-
+                                "INSERT INTO ##delete SELECT * FROM concept except SELECT * FROM ##concept;
+                                INSERT INTO ##insert SELECT * FROM ##concept except SELECT * FROM concept;
+                                delete from concept where concept_id in (select concept_id from ##delete);"
+                            DatabaseConnector::executeSql(connection, temp_sql, progressBar = F, reportOverallTime = F)
+                            insert_sql <- "INSERT INTO concept SELECT * FROM ##insert"
+                            DatabaseConnector::executeSql(connection, insert_sql)
+                            clean_sql <-
+                                "DROP TABLE IF EXISTS ##insert;
+                                DROP TABLE IF EXISTS ##delete;"
+                            DatabaseConnector::executeSql(connection, clean_sql, progressBar = F, reportOverallTime = F)
                             },error = function(e){
-                                cat(paste(voca_names[i], "table is failed."))
+                                clean_sql <-
+                                    "DROP TABLE IF EXISTS ##insert;
+                                DROP TABLE IF EXISTS ##delete;"
+                                DatabaseConnector::executeSql(connection, clean_sql, progressBar = F, reportOverallTime = F)
+                                cat(paste(voca_names[i], "table is failed.\n"))
                                 print(e)
                             })
                         }
@@ -77,7 +92,7 @@ voca_upload <- function(dbms, ip, schema, id, pw, droptable, voca_path,code, voc
                                 sql <- "INSERT INTO ##TEMP SELECT * FROM ##@tbl_name except (SELECT * from @tbl_name);"
                                 sql <- SqlRender::render(sql = sql, tbl_name = voca_names[i])
                                 sql <- SqlRender::translate(sql, targetDialect = dbms)
-                                DatabaseConnector::executeSql(connection, sql)
+                                DatabaseConnector::executeSql(connection, sql, progressBar = F, reportOverallTime = F)
                                 sql <- "INSERT INTO @tbl_name SELECT * FROM ##TEMP;"
                                 sql <- SqlRender::render(sql = sql, tbl_name = voca_names[i])
                                 sql <- SqlRender::translate(sql, targetDialect = dbms)
@@ -85,13 +100,12 @@ voca_upload <- function(dbms, ip, schema, id, pw, droptable, voca_path,code, voc
                                 DatabaseConnector::executeSql(connection, "DROP TABLE ##TEMP", progressBar = F, reportOverallTime = F)
                             },error = function(e){
                                 DatabaseConnector::executeSql(connection, "DROP TABLE IF EXISTS ##TEMP", progressBar = F, reportOverallTime = F)
-                                cat(paste("\n",voca_names[i], "table is failed."))
+                                cat(paste("\n",voca_names[i], "table is failed.\n"))
                                 print(e)
                             })
                     }
             }
         }
-
 
     #Create Metadata tuple and insert it after vocabulary files insert in db
     sql <- "INSERT INTO metadata values('@voca_id', '@code_name', '@latest_update', '@upload_date', '@uploader');"
@@ -102,4 +116,3 @@ voca_upload <- function(dbms, ip, schema, id, pw, droptable, voca_path,code, voc
     DatabaseConnector::disconnect(connection)
     cat("Done.")
 }
-
