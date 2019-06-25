@@ -1,3 +1,7 @@
+#' OmopVocaManager
+#'
+#' @docType package
+#' @name OmopVocaManager
 #' @title Upload vocabulary files to DBMS
 #'
 #' @description This is start of OmopVocaManager. It needs DB connection information
@@ -8,20 +12,22 @@
 #'
 #' @param dbms DBMS name to connect
 #' @param ip IP to connect
-#' @param schema schema name
+#' @param schema schema name in DBMS
 #' @param id Login id for dbms
 #' @param pw Login password for dbms
 #' @param droptable Logical. If TRUE, drop existed tables and create new tables.
 #'
+#' @examples
+#' OmopVocaManager(dbms = 'sql server', ip = "168.192.21.16", schema = 'voca_2019', id = 'user_id', pw = 'user_pw')
 #'
 #' @export
 #'
-voca_manager <- function(dbms, ip=NULL, schema = NULL,id=NULL, pw=NULL, droptable = FALSE){
+OmopVocaManager <- function(dbms, ip=NULL, schema = NULL,id=NULL, pw=NULL, droptable = FALSE){
+
     check.packages("SqlRender")
     check.packages("DatabaseConnector")
     check.packages("data.table")
-    check.packages("DBI")
-    check.packages("data.table")
+
     cat("Choose voca folder.")
 
     if(Sys.info()[1] == "Windows"){

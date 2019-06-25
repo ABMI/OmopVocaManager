@@ -1,12 +1,11 @@
-## fix
-table_check <- function(connection, dbms, schema, voca_files){
+table_check <- function(connection, dbms, schema, voca_files,droptable){
     temp <- c(voca_files, 'metadata')
     created<-FALSE
     check_db <- function(tbl_name,schema,dbms,drop=droptable){
         sql <- paste0("SELECT TABLE_NAME FROM @schema_name.information_schema.tables WHERE TABLE_NAME IN ('",tbl_name,"')")
         sql <- SqlRender::render(sql,schema_name = schema)
         sql <- SqlRender::translate(sql, targetDialect = dbms)
-        if(length(which(tolower(DatabaseConnector::querySql(connection, sql)$TABLE_NAME)==tbl_name))==0){
+        if(length(which(tolower(DatabaseConnector::querySql(connection, sql)$TABLE_NAME)==tbl_name))==0||drop == T){
             if(tbl_name == 'metadata'){
                 #metadata table ddl
                 ddl_sql <- "CREATE TABLE metadata (
@@ -24,7 +23,12 @@ table_check <- function(connection, dbms, schema, voca_files){
             }
             ddl_sql <- SqlRender::translate(ddl_sql, targetDialect = dbms)
 
-            DatabaseConnector::executeSql(connection, ddl_sql)
+            tryCatch({
+                DatabaseConnector::executeSql(connection, ddl_sql)
+            },error=function(e){
+                stop("Creating tables is failed. Check ddl file.")
+            })
+
             return(T)
         }else{
             return(F)
