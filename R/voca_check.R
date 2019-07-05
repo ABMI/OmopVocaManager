@@ -1,10 +1,10 @@
 # voca check
 
-voca_check <- function(voca_dir,code,update){
+voca_check <- function(importFolder,vocabulary,updateDate){
 
-    voca_zip <- select.list(list.files(path = voca_dir, pattern = ".+{1}zip$"))
-    unzip(zipfile = paste0(voca_dir,"\\",voca_zip), exdir = paste0(voca_dir,"\\",code,"_",update),overwrite=T)
-    voca_path <- paste0(voca_dir,"\\",code,"_",update)
+    voca_zip <- select.list(list.files(path = importFolder, pattern = ".+{1}zip$"))
+    unzip(zipfile = file.path(importFolder,voca_zip), exdir = file.path(importFolder,vocabulary,updateDate),overwrite=T)
+    voca_path <- file.path(importFolder,vocabulary,updateDate)
     voca_files <- list.files(path = voca_path, pattern = "\\w*.csv$")
 
     files <- c(
