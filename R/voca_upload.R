@@ -8,9 +8,11 @@ voca_upload <- function(connectionDetails, oracleTempSchema, vocabularyDatabase,
                              voca_files=voca_names,
                              dropTable = dropTable)
 
-    #Upload csv files
+    #Load csv files
     csv_table <- sapply(voca_names, function(csv_file){fread(file = file.path(importFolder,paste0(csv_file,".csv")),
                                                              sep = "\t", quote="",encoding = 'UTF-8')})
+
+    #Check csv (long txt or Chinese) ->write csv
 
     #create table
     ddl_sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "create_tables.sql",
