@@ -1,32 +1,40 @@
-voca_upload <- function(dbms, ip, schema, id, pw, droptable, voca_path,code, voca_id, update){
-
-    voca_names <- tolower(gsub(x =list.files(path = voca_path, pattern = "\\w*.csv$"), pattern = ".csv$", replacement = ""))
-
-    connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = dbms, server = ip, schema=schema,
-                                                                    user = id, password = pw)
+voca_upload <- function(connectionDetails, oracleTempSchema, vocabularyDatabase, dropTable, importFolder, vocabulary, vocaId, updateDateDate){
+    voca_names <- tolower(gsub(x =list.files(path = importFolder, pattern = "\\w*.csv$"), pattern = ".csv$", replacement = ""))
     connection <- DatabaseConnector::connect(connectionDetails)
 
-
-    new_table <- table_check(connection, dbms, schema, voca_names,droptable)
-
-    if(dbms == "sql server" && !grepl(x = schema, pattern = "\\w*.dbo$")){
-        schema <- paste0(schema,".dbo")
-    }
+    new_table <- table_check(connectionDetails = connectionDetails,
+                             oracleTempvocabularyDatabaseSchema = oracleTempvocabularyDatabaseSchema,
+                             vocabularyDatabaseSchema =vocabularyDatabaseSchema,
+                             voca_files=voca_names,
+                             dropTable = dropTable)
 
     #Upload csv files
-    csv_table <- sapply(voca_names, function(csv_file){fread(file = paste0(voca_path,"\\",csv_file,".csv"),
+    csv_table <- sapply(voca_names, function(csv_file){fread(file = file.path(importFolder,paste0(csv_file,".csv")),
                                                              sep = "\t", quote="",encoding = 'UTF-8')})
+
+    #create table
+    ddl_sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "create_tables.sql",
+                                                 packageName = "OmopVocaManager",
+                                                 oracleTempSchema,
+                                                 create_table = dropTable,
+                                                 dbms = dbms)
+
+    #upload table
+
+    #space to NULL trimming in Standard Column of Concept Table
+
+    #meta-data update
 
     for(i in 1:length(voca_names)){
         cat(paste("\n",voca_names[i],"table uploading...\n"))
 
         if(new_table[voca_names[i]]){
-            DatabaseConnector::insertTable(connection, voca_names[i],
-                                           csv_table[[i]], dropTableIfExists = F, progressBar = T,
+            DatabaseConnector::insertTable(connection,
+                                           tableName = voca_names[i],
+                                           data = csv_table[[i]], dropTableIfExists = F, progressBar = T,oracleTempSchema =oracleTempSchema ,
                                            createTable = F)
         }else{
-            ddl_sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "create_tables.sql", packageName = "OmopVocaManager",
-                                                         dbms = dbms)
+
             ddl_sql <- SqlRender::splitSql(ddl_sql)
                 # Catch 'date' data type issue
 
@@ -127,9 +135,13 @@ voca_upload <- function(dbms, ip, schema, id, pw, droptable, voca_path,code, voc
         }
 
     #Create Metadata tuple and insert it after vocabulary files insert in db
-    sql <- "INSERT INTO metadata values('@voca_id', '@code_name', '@latest_update', '@upload_date', '@uploader');"
-    sql <- SqlRender::render(sql, voca_id = voca_id, code_name = code, latest_update = update,
-                             upload_date = Sys.Date(), uploader = id)
+    sql <- "INSERT INTO @vocabularySchemaDatabase.metadata values('@vocaId', '@vocabulary_name', '@latest_updateDate', '@upload_date', '@uploader');"
+    sql <- SqlRender::render(sql, vocabularySchemaDatabase = vocabularySchemaDatabase,
+                             vocaId = vocaId,
+                             vocabulary_name = vocabulary,
+                             latest_updateDate = updateDate,
+                             upload_date = Sys.Date(),
+                             uploader = id)
     sql <- SqlRender::translate(sql, targetDialect = dbms)
     DatabaseConnector::executeSql(connection, sql)
     DatabaseConnector::disconnect(connection)

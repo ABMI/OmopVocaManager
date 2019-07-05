@@ -8,3 +8,9 @@ Description: This packager for uploading vocabulary files to DBMS. Download athe
 License: Apache 2.0
 Encoding: UTF-8
 LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 6.1.1
+Imports:
+    data.table,
+    DatabaseConnector,
+    SqlRender
