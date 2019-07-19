@@ -33,7 +33,7 @@
 #' @param vocabularyDatabaseSchema Schema name where your vocabulary in OMOP CDM format resides.
 #'                             Note that for SQL Server, this should include both the database and
 #'                             schema name, for example 'vocabulary_data.dbo'.
-#' @param dropTable Logical. If TRUE, drop existed tables and create new tables.
+#' @param createTable Logical. If TRUE, drop existed tables and create new tables.
 #'
 #' @examples
 #' \donotrun{
@@ -45,7 +45,7 @@
 #' OmopVocaManager(connectionDetails = connectionDetails,
 #'                 oracleTempSchema = NULL,
 #'                 vocabularyDatabaseSchema = 'CDM_voca',
-#'                 dropTable = FALSE)
+#'                 dropIfExists = FALSE)
 #' }
 #'
 #' @export
@@ -56,29 +56,22 @@
 OmopVocaManager <- function(connectionDetails,
                             oracleTempSchema = NULL,
                             vocabularyDatabaseSchema,
-                            dropTable = FALSE){
+                            dropIfExists = FALSE){
 
     cat("Choose voca folder.")
 
     if(Sys.info()[1] == "Windows"){
-        importFolder <- choose.dir()
+        importFolder <- choose.dir() #choose.files()
     }
     else{
-        importFolder <- readline("Set work directory path : ")
+        importFolder <- readline("Vocabulary zip file path : ")
     }
 
-    vocabulary <- readline("Input voca vocabulary name(ex.SNOMED ) : ")
-    vocaId <- readline("Input voca id number : ")
-    updateDate <- readline("Input voca latest update(yyyy-mm-dd) : ")
+    importFolder <- vocaCheck(importFolder)
 
-    importFolder <- voca_check(importFolder,vocabulary,updateDate)
-
-    voca_upload(connectionDetails = connectionDetails,
+    vocaUpload(connectionDetails = connectionDetails,
                 oracleTempSchema = oracleTempSchema,
                 vocabularyDatabaseSchema = vocabularyDatabaseSchema,
-                dropTable = dropTable,
-                importFolder=importFolder,
-                vocabulary = vocabulary,
-                vocaId = vocaId,
-                updateDate = updateDate)
+                dropIfExists = dropIfExists,
+                importFolder=importFolder)
 }
