@@ -1,7 +1,7 @@
 Package: OmopVocaManager
 Type: Package
 Title: Athena omop vocabulary export tool.
-Version: 0.9.0
+Version: 0.9.5
 Author: Itblock
 Maintainer: The package maintainer <wnsuddlsla@gmail.com>
 Description: This packager for uploading vocabulary files to DBMS. Download athena vocabulary files and run this function. 
@@ -13,4 +13,6 @@ RoxygenNote: 6.1.1
 Imports:
     data.table,
     DatabaseConnector,
-    SqlRender
+    SqlRender,
+    rvest,
+    dplyr

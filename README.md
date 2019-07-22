@@ -3,12 +3,18 @@
 
 # Introduction
 
-Omop Vocabulary Manager (OmopVocaManger) is tool for uploading athena vocabulary data. It can not upload data in UTF-16 encoding yet.
+Omop Vocabulary Manager (OmopVocaManger) is tool for uploading athena vocabulary data to DBMS server. 
 
 # Features
 
-- Unzip vocabulary zip file in folder that named code name and update time.
-- If no tables in dbms, it create tables using ddl file.
+- It needs vocabulary files in folder.
+- If you have no tables in dbms, it can create tables using ddl file.
+
+# Download Vocabulary
+
+- Download vocabulary in athena.
+
+![](images/athena-voca-download.gif)
 
 # How to use
 
@@ -22,11 +28,15 @@ install_github("ABMI/OmopVocaManager")
 After install, you can use OmopVocaManager.
 ```
 library(OmopVocaManager)
-OmopVocaManager(<dbms>, <ip>, <schema>, <id>, <pw>)
+connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = <dbms server>,
+					   			server = <ip address>,
+					   			user = <user id>,
+					   			password = <user password>)
+OmopVocaManager(connectionDetails = connectionDetails,
+		oracleTempSchema = <oracle temp schema>
+		vocabularyDatabaseSchema = <schema>,
+		dropIfExists = F)
 ```
+If you have already tables, 'dropIfExists = T' can drop the tables for create new tables.
 
-If you want to create new voca tables, using dropTable parameter.
-```
-OmopVocaManager(<dbms>, <ip>, <schema>, <id>, <pw>, dropTable = T)
-```
-
+![](images/sample_use_case.gif)

@@ -59,16 +59,13 @@ OmopVocaManager <- function(connectionDetails,
                             dropIfExists = FALSE){
 
     cat("Choose voca folder.")
-
     if(Sys.info()[1] == "Windows"){
         importFolder <- choose.dir() #choose.files()
     }
     else{
         importFolder <- readline("Vocabulary zip file path : ")
     }
-
-    importFolder <- vocaCheck(importFolder)
-
+    vocaCheck(importFolder)
     vocaUpload(connectionDetails = connectionDetails,
                 oracleTempSchema = oracleTempSchema,
                 vocabularyDatabaseSchema = vocabularyDatabaseSchema,

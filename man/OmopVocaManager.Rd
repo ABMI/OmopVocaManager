@@ -7,7 +7,7 @@
 \title{Upload vocabulary files to DBMS}
 \usage{
 OmopVocaManager(connectionDetails, oracleTempSchema = NULL,
-  vocabularyDatabaseSchema, dropTable = FALSE)
+  vocabularyDatabaseSchema, dropIfExists = FALSE)
 }
 \arguments{
 \item{connectionDetails}{An object of type \code{connectionDetails} as created using the
@@ -21,7 +21,7 @@ priviliges for storing temporary tables.}
 Note that for SQL Server, this should include both the database and
 schema name, for example 'vocabulary_data.dbo'.}
 
-\item{dropTable}{Logical. If TRUE, drop existed tables and create new tables.}
+\item{createTable}{Logical. If TRUE, drop existed tables and create new tables.}
 }
 \description{
 This is start of OmopVocaManager. It needs DB connection information
@@ -41,7 +41,7 @@ connectionDetails <- createConnectionDetails(dbms = "postgresql",
 OmopVocaManager(connectionDetails = connectionDetails,
                 oracleTempSchema = NULL,
                 vocabularyDatabaseSchema = 'CDM_voca',
-                dropTable = FALSE)
+                dropIfExists = FALSE)
 }
 
 }
