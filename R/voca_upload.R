@@ -14,12 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#' @export
+
 vocaUpload <- function(connectionDetails,
                        oracleTempSchema = NULL,
                        vocabularyDatabaseSchema,
-                       dropIfExists = F,
+                       dropIfExists = dropIfExists,
                        importFolder){
-  vocaNames <- tolower(gsub(x =list.files(path = importFolder, pattern = "\\w*.csv$"),
+
+    vocaNames <- tolower(gsub(x =list.files(path = importFolder, pattern = "\\w*.csv$"),
                             pattern = ".csv$",
                             replacement = ""))
   connection <- DatabaseConnector::connect(connectionDetails)
@@ -28,23 +31,38 @@ vocaUpload <- function(connectionDetails,
   csvTables <- sapply(X = toupper(vocaNames),
                       FUN = function(csvFile){
                         data.table::fread(file = file.path(importFolder,paste0(csvFile,".csv")),
-                                          sep = "\t", quote="", na.strings = "")})
+                                          sep = "\t", quote="", na.strings = "", encoding = "UTF-8")})
 
-  #create table
-  metaDdl <- "{@dropIfExists}?{IF OBJECT_ID('@vocabularyDatabaseSchema.metadata', 'U') IS NOT NULL
-    	        DROP TABLE @vocabularyDatabaseSchema.metadata;}
-    	        CREATE TABLE @vocabularyDatabaseSchema.metadata (
+
+  if(dropIfExists == T){
+    metaDdl <- "IF OBJECT_ID('@vocabularyDatabaseSchema.metadata', 'U') IS NOT NULL
+	              DROP TABLE @vocabularyDatabaseSchema.metadata;
+
+	              CREATE TABLE @vocabularyDatabaseSchema.metadata (
                 id INT NOT NULL,
                 code_name varchar(100),
                 latest_update date,
                 upload_date date,
                 upload_user varchar(50));"
+  }else{
+    metaDdl <- "IF OBJECT_ID('@vocabularyDatabaseSchema.metadata', 'U') IS NULL
+
+	              CREATE TABLE @vocabularyDatabaseSchema.metadata (
+                id INT NOT NULL,
+                code_name varchar(100),
+                latest_update date,
+                upload_date date,
+                upload_user varchar(50));"
+  }
+
+
   metaDdl<-SqlRender::render(metaDdl,
-                             dropIfExists = dropIfExists,
                              vocabularyDatabaseSchema=vocabularyDatabaseSchema)
+
   metaDdl<-SqlRender::translate(metaDdl,
                                 oracleTempSchema = oracleTempSchema,
                                 targetDialect = connectionDetails$dbms)
+
   DatabaseConnector::executeSql(connection = connection,
                                 sql = metaDdl)
 
@@ -54,7 +72,11 @@ vocaUpload <- function(connectionDetails,
                                               oracleTempSchema = oracleTempSchema,
                                               dropIfExists = dropIfExists,
                                               dbms = connectionDetails$dbms)
-  DatabaseConnector::executeSql(connection = connection, sql = ddlSql)
+
+  if(dropIfExists == T){
+    DatabaseConnector::executeSql(connection = connection, sql = ddlSql)
+  }
+
 
   #upload the file to the table
   for(i in seq(length(csvTables))){
@@ -87,7 +109,7 @@ vocaUpload <- function(connectionDetails,
                                             progressBar = T,
                                             oracleTempSchema = oracleTempSchema),
              error=function(e){
-               print(paste(names(csvTables)[i]),"is failed.")
+               print(paste(names(csvTables)[i],"is failed."))
              }
     )
   }
@@ -110,3 +132,4 @@ vocaUpload <- function(connectionDetails,
   DatabaseConnector::disconnect(connection)
   cat("Done.")
 }
+
