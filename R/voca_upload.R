@@ -21,7 +21,8 @@ vocaUpload <- function(connectionDetails,
                        vocabularyDatabaseSchema,
                        dropIfExists = dropIfExists,
                        importFolder){
-  vocaNames <- tolower(gsub(x =list.files(path = importFolder, pattern = "\\w*.csv$"),
+
+    vocaNames <- tolower(gsub(x =list.files(path = importFolder, pattern = "\\w*.csv$"),
                             pattern = ".csv$",
                             replacement = ""))
   connection <- DatabaseConnector::connect(connectionDetails)
@@ -30,7 +31,7 @@ vocaUpload <- function(connectionDetails,
   csvTables <- sapply(X = toupper(vocaNames),
                       FUN = function(csvFile){
                         data.table::fread(file = file.path(importFolder,paste0(csvFile,".csv")),
-                                          sep = "\t", quote="", na.strings = "")})
+                                          sep = "\t", quote="", na.strings = "", encoding = "UTF-8")})
 
 
   if(dropIfExists == T){
